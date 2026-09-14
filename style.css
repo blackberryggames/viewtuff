@@ -39,6 +39,128 @@ button { font-family: inherit; cursor: pointer; border: none; }
 select { font-family: inherit; cursor: pointer; }
 img { display: block; max-width: 100%; }
 
+/* ─── hCaptcha Gate Overlay ───────────────────────────── */
+#captcha-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  transition: opacity .4s ease;
+}
+
+#captcha-gate.fading {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.gate-card {
+  background: var(--surf);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 40px 36px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 22px;
+  max-width: 380px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 4px 16px rgba(0,0,0,.4);
+}
+
+.gate-logo {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.gate-logo-text {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -.4px;
+  color: var(--text);
+}
+
+.gate-divider {
+  width: 40px;
+  height: 1px;
+  background: var(--border);
+}
+
+.gate-headline {
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+  letter-spacing: -.2px;
+}
+
+.gate-sub {
+  font-size: 13px;
+  color: var(--muted);
+  text-align: center;
+  line-height: 1.55;
+  margin-top: -10px;
+}
+
+/* Waiting spinner shown before hCaptcha loads */
+.gate-wait {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+#captcha-widget-wrap {
+  display: flex;
+  justify-content: center;
+  min-height: 78px;
+}
+
+/* Continue button — hidden until captcha solved */
+#captcha-continue-btn {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  height: 42px;
+  background: var(--red);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  letter-spacing: -.1px;
+  transition: background .15s, transform .1s;
+}
+#captcha-continue-btn.visible {
+  display: flex;
+}
+#captcha-continue-btn:hover {
+  background: #e0352a;
+}
+#captcha-continue-btn:active {
+  transform: scale(.98);
+}
+
+.gate-footer {
+  font-size: 11px;
+  color: var(--dim);
+  text-align: center;
+  line-height: 1.5;
+}
+
+/* While gate is up, hide body overflow */
+body.gate-active {
+  overflow: hidden;
+}
+
 /* ─── Header ──────────────────────────────────────────── */
 .header {
   position: sticky; top: 0; z-index: 50;
@@ -120,7 +242,6 @@ img { display: block; max-width: 100%; }
   max-height: 280px; overflow-y: auto;
   overflow-x: hidden;
   box-shadow: 0 8px 32px rgba(0,0,0,.55), 0 2px 8px rgba(0,0,0,.3);
-  /* Animate open/close */
   opacity: 0;
   transform: translateY(-6px) scaleY(0.96);
   transform-origin: top right;
@@ -133,7 +254,6 @@ img { display: block; max-width: 100%; }
   pointer-events: auto;
 }
 
-/* Scrollbar styling inside dropdown */
 .dd-list::-webkit-scrollbar { width: 4px; }
 .dd-list::-webkit-scrollbar-track { background: transparent; }
 .dd-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
@@ -184,12 +304,10 @@ img { display: block; max-width: 100%; }
 }
 .status-label { color: var(--muted); font-size: 11px; }
 
-/* ok = green */
 .status-ok   { background: rgba(52,208,88,.08); border-color: rgba(52,208,88,.3); }
 .status-ok   .status-dot { background: var(--green); box-shadow: 0 0 5px rgba(52,208,88,.6); }
 .status-ok   .status-label { color: #5ce87a; }
 
-/* checking = yellow pulse */
 .status-checking { background: rgba(240,180,41,.08); border-color: rgba(240,180,41,.3); }
 .status-checking .status-dot {
   background: var(--yellow);
@@ -197,12 +315,10 @@ img { display: block; max-width: 100%; }
 }
 .status-checking .status-label { color: #f0c060; }
 
-/* trying = yellow flicker */
 .status-trying { background: rgba(240,180,41,.08); border-color: rgba(240,180,41,.3); }
 .status-trying .status-dot { background: var(--yellow); animation: dot-pulse .5s ease-in-out infinite; }
 .status-trying .status-label { color: #f0c060; }
 
-/* error = red */
 .status-error { background: rgba(255,59,48,.08); border-color: rgba(255,59,48,.3); }
 .status-error .status-dot { background: var(--red); }
 .status-error .status-label { color: #ff7a73; }
@@ -411,7 +527,6 @@ main { flex: 1; padding: 24px 16px; max-width: 1440px; margin: 0 auto; width: 10
 }
 .stat-chip:empty { display: none; }
 
-/* Separator dots between non-pill stats */
 .v-stats .stat-chip + .stat-chip::before { content: '·'; color: var(--dim); margin-right: 8px; }
 .v-stats .stat-chip + .likes-pill::before { content: none; }
 
@@ -424,7 +539,6 @@ main { flex: 1; padding: 24px 16px; max-width: 1440px; margin: 0 auto; width: 10
 .likes-pill.hidden { display: none; }
 .likes-thumb { font-size: 12px; }
 
-/* Channel row */
 .ch-link {
   display: flex; align-items: center; gap: 12px;
   padding: 12px 0;
@@ -499,7 +613,7 @@ details[open] .desc-toggle::before { content: '▾ '; }
 .rel-channel { font-size: 11px; color: var(--muted); }
 .rel-meta { font-size: 10.5px; color: var(--dim); margin-top: 1px; }
 
-/* ─── Main Nav (Home / Shorts tabs) ──────────────────── */
+/* ─── Main Nav ────────────────────────────────────────── */
 .main-nav {
   display: flex; align-items: center; gap: 4px;
   flex-shrink: 0;
@@ -520,9 +634,7 @@ details[open] .desc-toggle::before { content: '▾ '; }
   border-color: var(--border);
 }
 
-/* ─── Shorts: full-viewport scroll-snap feed ─────────────── */
-
-/* The view itself becomes the scroll container */
+/* ─── Shorts ─────────────────────────────────────────── */
 #view-shorts {
   position: fixed;
   inset: var(--hdr) 0 0 0;
@@ -531,7 +643,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
 }
 #view-shorts.active { display: block; }
 
-/* Scroll container: snaps each item to full height */
 .shorts-scroller {
   width: 100%;
   height: 100%;
@@ -540,11 +651,9 @@ details[open] .desc-toggle::before { content: '▾ '; }
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
 }
-/* Hide scrollbar but keep scrolling */
 .shorts-scroller::-webkit-scrollbar { display: none; }
 .shorts-scroller { scrollbar-width: none; }
 
-/* Each short occupies exactly one screen */
 .short-item {
   position: relative;
   width: 100%;
@@ -558,16 +667,13 @@ details[open] .desc-toggle::before { content: '▾ '; }
   flex-shrink: 0;
 }
 
-/* Center column — phone-shaped */
 .short-inner {
   position: relative;
   height: 100%;
-  /* max width keeps the 9:16 feel on wide screens */
   width: min(100%, calc(100vh * 9 / 16));
   background: #000;
 }
 
-/* Thumbnail fills the inner area */
 .short-thumb {
   position: absolute; inset: 0;
   width: 100%; height: 100%;
@@ -575,7 +681,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   display: block;
 }
 
-/* Gradient overlay for text legibility */
 .short-inner::after {
   content: '';
   position: absolute; inset: 0;
@@ -589,7 +694,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   z-index: 1;
 }
 
-/* Big centered play button */
 .short-play-btn {
   position: absolute; inset: 0; z-index: 2;
   display: flex; align-items: center; justify-content: center;
@@ -607,7 +711,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   background: rgba(0,0,0,.65);
 }
 
-/* Iframe replaces thumb when playing */
 .short-iframe-wrap {
   position: absolute; inset: 0; z-index: 3;
   display: none;
@@ -617,7 +720,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   width: 100%; height: 100%; border: none;
 }
 
-/* Info overlay — bottom of inner column */
 .short-info {
   position: absolute; bottom: 0; left: 0; right: 0;
   z-index: 2; padding: 16px 14px 20px;
@@ -638,7 +740,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   margin-top: 4px;
 }
 
-/* Duration badge — top-left */
 .short-duration {
   position: absolute; top: 12px; left: 12px; z-index: 3;
   background: rgba(0,0,0,.65); color: #fff;
@@ -647,7 +748,6 @@ details[open] .desc-toggle::before { content: '▾ '; }
   backdrop-filter: blur(4px);
 }
 
-/* Right-side action buttons */
 .short-actions {
   position: absolute; right: -60px; bottom: 80px;
   z-index: 3;
@@ -668,15 +768,11 @@ details[open] .desc-toggle::before { content: '▾ '; }
 }
 .short-act span { font-size: 10px; color: rgba(255,255,255,.8); }
 
-/* On narrower screens the right buttons fold inside the inner column */
 @media (max-width: 860px) {
-  .short-actions {
-    right: 8px;
-  }
+  .short-actions { right: 8px; }
   .short-act-icon { width: 38px; height: 38px; }
 }
 
-/* Loading / empty state inside scroller */
 .shorts-placeholder {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
@@ -687,13 +783,10 @@ details[open] .desc-toggle::before { content: '▾ '; }
 .shorts-placeholder strong { color: #ff7a73; font-size: 15px; }
 .shorts-placeholder .retry-btn { margin-top: 6px; }
 
-/* Override main padding so Shorts is truly full-bleed */
 body.shorts-active main { padding: 0; max-width: none; }
 body.shorts-active .footer { display: none; }
 
-/* Hide old nav arrows — navigation is now scroll-based */
 .shorts-nav-btn { display: none !important; }
-
 
 /* ─── Footer ──────────────────────────────────────────── */
 .footer {
@@ -724,6 +817,7 @@ body.shorts-active .footer { display: none; }
   .v-title { font-size: 16px; }
   .shorts-col { width: 100%; }
   .nav-btn span { display: none; }
+  .gate-card { padding: 32px 24px 28px; }
 }
 @media (max-width: 400px) {
   .video-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
