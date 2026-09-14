@@ -4,7 +4,7 @@
 
 const PROXY_BASE = 'https://lucky-sun-99ea.xxgoldenwarriors.workers.dev';
 
-/* ── Piped instances — private.coffee + ducks.party first ── */
+/* ── Piped instances ── */
 const ALL_INSTANCES = [
   { url: 'https://api.piped.private.coffee',    label: 'private.coffee',     flag: '🇦🇹' },
   { url: 'https://pipedapi.ducks.party',         label: 'ducks.party',        flag: '🇳🇱' },
@@ -23,15 +23,45 @@ let currentQuery    = '';
 let currentPage     = 1;
 let currentNextpage = null;
 let currentVideo    = '';
-let activeInstance  = ALL_INSTANCES[0].url; // default = private.coffee
+let activeInstance  = ALL_INSTANCES[0].url;
 
 /* ── Shorts state ── */
-let shortsItems       = [];   // array of short video objects
-let shortsIndex       = 0;    // currently visible short
-let shortsLoading     = false;
-let shortsNextpage    = null;
-let shortsRegion      = 'US';
-let shortsIsTransitioning = false;
+let shortsItems    = [];
+let shortsIndex    = 0;
+let shortsLoading  = false;
+let shortsNextpage = null;
+let shortsRegion   = 'US';
+
+/* ══════════════════════════════════════════════════════════
+   hCAPTCHA GATE
+   ══════════════════════════════════════════════════════════ */
+
+// Called by hCaptcha widget when user solves the challenge
+function onCaptchaSolved(token) {
+  const btn = document.getElementById('captcha-continue-btn');
+  if (btn) btn.classList.add('visible');
+}
+
+// Called by hCaptcha widget if the token expires
+function onCaptchaExpired() {
+  const btn = document.getElementById('captcha-continue-btn');
+  if (btn) btn.classList.remove('visible');
+}
+
+// Dismiss gate after user clicks Continue
+function dismissGate() {
+  const gate = document.getElementById('captcha-gate');
+  if (!gate) return;
+
+  gate.classList.add('fading');
+  document.body.classList.remove('gate-active');
+
+  gate.addEventListener('transitionend', () => {
+    gate.remove();
+    // Kick off the actual app now that gate is gone
+    bootApp();
+  }, { once: true });
+}
 
 /* ── DOM helpers ── */
 const $  = id => document.getElementById(id);
@@ -60,16 +90,8 @@ function fmtCount(n) {
   return String(n);
 }
 
-function fmtViews(n) {
-  const c = fmtCount(n);
-  return c ? c + ' views' : '';
-}
-
-function fmtSubs(n) {
-  const c = fmtCount(n);
-  return c ? c + ' subscribers' : '';
-}
-
+function fmtViews(n)  { const c = fmtCount(n); return c ? c + ' views' : ''; }
+function fmtSubs(n)   { const c = fmtCount(n); return c ? c + ' subscribers' : ''; }
 function fmtUploadedDate(str) { return str || ''; }
 
 function esc(s) {
@@ -95,7 +117,6 @@ function buildInstanceDropdown() {
   const list    = wrapper.querySelector('.dd-list');
   if (!trigger || !list) return;
 
-  // Populate list items
   list.innerHTML = '';
   ALL_INSTANCES.forEach(inst => {
     const item = document.createElement('div');
@@ -110,7 +131,6 @@ function buildInstanceDropdown() {
     list.appendChild(item);
   });
 
-  // Trigger toggle
   trigger.addEventListener('click', (e) => {
     e.stopPropagation();
     const isOpen = wrapper.classList.contains('open');
@@ -124,7 +144,6 @@ function openDropdown() {
   const wrapper = $('instance-dropdown-wrapper');
   if (!wrapper) return;
   wrapper.classList.add('open');
-  // Scroll active item into view
   const activeItem = wrapper.querySelector('.dd-item.active');
   if (activeItem) {
     setTimeout(() => activeItem.scrollIntoView({ block: 'nearest', behavior: 'smooth' }), 50);
@@ -138,16 +157,13 @@ function closeDropdown() {
 
 function selectInstance(url, label, flag) {
   activeInstance = url;
-  // Update trigger text
   const triggerLabel = document.querySelector('.dd-trigger-label');
   const triggerFlag  = document.querySelector('.dd-trigger-flag');
   if (triggerLabel) triggerLabel.textContent = label;
   if (triggerFlag)  triggerFlag.textContent  = flag;
-  // Update active class in list
   document.querySelectorAll('.dd-item').forEach(item => {
     item.classList.toggle('active', item.dataset.url === url);
   });
-  // Reset home grid so it reloads
   $('home-grid').innerHTML = '';
   setInstanceStatus('checking');
 }
@@ -163,14 +179,12 @@ function setInstanceStatus(state) {
   const statusEl = $('instance-status');
   if (!statusEl) return;
   statusEl.className = 'instance-status-badge status-' + state;
-
   const states = {
-    ok:       { dot: '', label: activeInstance ? new URL(activeInstance).hostname : 'Connected', tip: 'Instance is responding' },
-    error:    { dot: '', label: 'Unavailable',  tip: 'Instance unavailable — trying others' },
-    checking: { dot: '', label: 'Connecting…',  tip: 'Checking instance…' },
-    trying:   { dot: '', label: 'Trying next…', tip: 'Falling back to another instance' },
+    ok:       { label: activeInstance ? new URL(activeInstance).hostname : 'Connected', tip: 'Instance is responding' },
+    error:    { label: 'Unavailable',  tip: 'Instance unavailable — trying others' },
+    checking: { label: 'Connecting…',  tip: 'Checking instance…' },
+    trying:   { label: 'Trying next…', tip: 'Falling back to another instance' },
   };
-
   const s = states[state] || states.checking;
   statusEl.innerHTML = `<span class="status-dot"></span><span class="status-label">${esc(s.label)}</span>`;
   statusEl.title = s.tip;
@@ -191,9 +205,8 @@ async function fetchWithFallback(path, params = {}) {
     tried++;
     if (tried > 1) {
       setInstanceStatus('trying');
-      // Animate the dropdown to scroll to the new instance being tried
       animateDropdownScroll(instanceUrl);
-      await delay(320); // brief pause so animation is visible
+      await delay(320);
     }
     try {
       const data = await doFetch(instanceUrl, path, params);
@@ -207,7 +220,6 @@ async function fetchWithFallback(path, params = {}) {
     } catch (e) {
       lastErr = e;
       if (e.name === 'AbortError') throw e;
-      // continue to next
     }
   }
   setInstanceStatus('error');
@@ -217,7 +229,6 @@ async function fetchWithFallback(path, params = {}) {
 function delay(ms) { return new Promise(r => setTimeout(r, ms)); }
 
 function animateDropdownScroll(url) {
-  // Visually flash the status and scroll list if open
   const item = document.querySelector(`.dd-item[data-url="${CSS.escape(url)}"]`);
   if (!item) return;
   document.querySelectorAll('.dd-item').forEach(el => el.classList.remove('trying'));
@@ -274,17 +285,12 @@ function toast(msg) {
 
 /* ── View switching ── */
 function showView(id) {
-  // Regular .view sections use display toggling
   document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
-
   const isShorts = id === 'view-shorts';
   document.body.classList.toggle('shorts-active', isShorts);
-
   if (isShorts) {
-    // Shorts is position:fixed — just add active, no scroll needed
     $('view-shorts').classList.add('active');
   } else {
-    // Remove shorts active class if switching away
     $('view-shorts')?.classList.remove('active');
     $(id).classList.add('active');
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -317,7 +323,6 @@ async function loadTrending() {
   $('home-grid').innerHTML = '';
   showState('home-state', 'loading', 'Loading trending…');
   setInstanceStatus('checking');
-
   try {
     const region = $('region-sel').value;
     const data   = await apiGet('/trending', { region });
@@ -422,9 +427,6 @@ function makeVideoCard(v) {
   card.setAttribute('role', 'button');
   card.setAttribute('aria-label', v.title || 'Video');
 
-  const uploaderUrl = v.uploaderUrl || '';
-  const channelId   = uploaderUrl.replace('/channel/','');
-
   card.innerHTML = `
     <div class="thumb-wrap">
       ${thumb ? `<img class="thumb" src="${esc(thumb)}" alt="" loading="lazy" decoding="async" />` : '<div class="thumb-placeholder"></div>'}
@@ -492,7 +494,6 @@ async function fetchVideoMeta(videoId) {
     $('v-date').textContent  = v.uploadDate ? new Date(v.uploadDate).toLocaleDateString() : '';
     $('v-desc').textContent  = v.description || 'No description.';
 
-    // Likes
     if (v.likes > 0) {
       $('v-likes').innerHTML = `<span class="likes-thumb">👍</span>${fmtCount(v.likes)}`;
       $('v-likes').classList.remove('hidden');
@@ -500,7 +501,6 @@ async function fetchVideoMeta(videoId) {
       $('v-likes').classList.add('hidden');
     }
 
-    // Channel info with subscriber count
     $('ch-name').textContent = v.uploader || '';
     const subCount = v.uploaderSubscriberCount;
     if (subCount > 0) {
@@ -544,14 +544,11 @@ function makeRelatedCard(v) {
   if (videoId) card.addEventListener('click', () => loadVideo(videoId));
   return card;
 }
+
 /* ══════════════════════════════════════════════════════════
-   SHORTS  — scroll-snap full-viewport feed
+   SHORTS — scroll-snap full-viewport feed
    ══════════════════════════════════════════════════════════ */
 
-/* ── Config ── */
-// Only show videos ≤ 60 s. duration=0 means Piped didn't report it — 
-// we include those since Piped routinely omits duration for real Shorts.
-// Anything with a known duration > 60s is excluded.
 const MAX_SHORT_DURATION = 60;
 
 const SHORTS_QUERIES = [
@@ -562,11 +559,9 @@ const SHORTS_QUERIES = [
   'shorts trending',
 ];
 
-/* ── Helpers ── */
 function isActualShort(v) {
   if (!v || !v.url) return false;
   const dur = v.duration;
-  // Keep if duration unknown/zero OR within limit
   if (dur === undefined || dur === null || dur <= 0) return true;
   return dur <= MAX_SHORT_DURATION;
 }
@@ -581,7 +576,6 @@ function dedupByVideoId(arr) {
   });
 }
 
-/* ── Nav ── */
 function navShorts() {
   history.pushState({}, '', '?shorts=1');
   setNavActive('nav-shorts');
@@ -595,7 +589,6 @@ function setNavActive(activeId) {
   if (btn) btn.classList.add('active');
 }
 
-/* ── Load ── */
 async function loadShorts() {
   if (shortsLoading) return;
   shortsLoading = true;
@@ -607,7 +600,6 @@ async function loadShorts() {
   try {
     const collected = [];
 
-    // Search each query and strictly filter to ≤60s (or unknown duration)
     for (const q of SHORTS_QUERIES) {
       if (collected.length >= 25) break;
       try {
@@ -615,10 +607,9 @@ async function loadShorts() {
         const items = (data.items || []).filter(isActualShort);
         collected.push(...items);
         if (!shortsNextpage && data.nextpage) shortsNextpage = data.nextpage;
-      } catch (_) { /* try next */ }
+      } catch (_) {}
     }
 
-    // Fallback: trending, strictly filtered
     if (collected.length === 0) {
       try {
         const data = await apiGet('/trending', { region: shortsRegion });
@@ -639,11 +630,8 @@ async function loadShorts() {
     shortsItems = unique;
     shortsIndex = 0;
 
-    // Remove placeholder, render all items into scroller
     if (ph) ph.remove();
     renderAllShorts(scroller);
-
-    // Observe scroll to track active index
     initShortsScrollObserver(scroller);
 
   } catch (e) {
@@ -656,7 +644,6 @@ async function loadShorts() {
   }
 }
 
-/* ── Render all items ── */
 function renderAllShorts(scroller) {
   shortsItems.forEach((v, idx) => {
     const item = makeShortItem(v, idx);
@@ -677,21 +664,17 @@ function makeShortItem(v, idx) {
     <div class="short-inner">
       ${thumb ? `<img class="short-thumb" src="${esc(thumb)}" alt="" loading="lazy" decoding="async" />` : ''}
       ${dur ? `<div class="short-duration">${esc(dur)}</div>` : ''}
-
       <button class="short-play-btn" aria-label="Play ${esc(v.title || 'short')}" data-videoid="${esc(videoId)}">
         <div class="short-play-icon">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="white"><polygon points="6,3 20,12 6,21"/></svg>
         </div>
       </button>
-
       <div class="short-iframe-wrap" id="short-if-${esc(idx)}"></div>
-
       <div class="short-info">
         <p class="short-channel">${esc(v.uploader || v.uploaderName || '')}</p>
         <p class="short-title">${esc(v.title || '')}</p>
         <p class="short-meta">${fmtViews(v.views)}</p>
       </div>
-
       <div class="short-actions">
         <a class="short-act" href="https://www.youtube.com/shorts/${esc(videoId)}"
            target="_blank" rel="noopener" title="Open on YouTube">
@@ -709,7 +692,6 @@ function makeShortItem(v, idx) {
       </div>
     </div>`;
 
-  // Play button handler
   item.querySelector('.short-play-btn').addEventListener('click', () => {
     playShortInItem(item, videoId, idx);
   });
@@ -732,7 +714,6 @@ function playShortInItem(item, videoId, idx) {
   if (thumb)   thumb.style.opacity   = '0';
 }
 
-/* ── Scroll observer — tracks which item is visible ── */
 function initShortsScrollObserver(scroller) {
   const obs = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
@@ -740,7 +721,6 @@ function initShortsScrollObserver(scroller) {
         const idx = Number(entry.target.dataset.idx);
         shortsIndex = idx;
 
-        // Pause iframes in items that scrolled away
         document.querySelectorAll('.short-item').forEach((el, i) => {
           if (i !== idx) {
             const iw = el.querySelector('.short-iframe-wrap');
@@ -755,18 +735,15 @@ function initShortsScrollObserver(scroller) {
           }
         });
 
-        // Preload more when near the end
         if (idx >= shortsItems.length - 4) preloadMoreShorts();
       }
     });
   }, { root: scroller, threshold: 0.6 });
 
   scroller.querySelectorAll('.short-item').forEach(el => obs.observe(el));
-  // Store observer to add new items later
   scroller._observer = obs;
 }
 
-/* ── Preload more shorts ── */
 async function preloadMoreShorts() {
   if (shortsLoading || !shortsNextpage) return;
   shortsLoading = true;
@@ -789,7 +766,6 @@ async function preloadMoreShorts() {
   finally { shortsLoading = false; }
 }
 
-/* ── Keyboard for shorts ── */
 document.addEventListener('keydown', e => {
   if (!$('view-shorts')?.classList.contains('active')) return;
   const scroller = $('shorts-scroller');
@@ -816,7 +792,6 @@ document.addEventListener('keydown', e => {
     }
   }
 });
-
 
 /* ── URL routing ── */
 function route() {
@@ -845,9 +820,15 @@ function route() {
 
 window.addEventListener('popstate', route);
 
-/* ── Boot ── */
-document.addEventListener('DOMContentLoaded', () => {
+/* ── Boot — called AFTER captcha gate is dismissed ── */
+function bootApp() {
   buildInstanceDropdown();
   setInstanceStatus('checking');
   route();
+}
+
+/* ── DOMContentLoaded — only sets up the gate; app boots after captcha ── */
+document.addEventListener('DOMContentLoaded', () => {
+  // Nothing here — the app starts in bootApp() once the captcha passes.
+  // The gate overlay is already rendered by the HTML.
 });
