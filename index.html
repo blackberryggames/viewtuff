@@ -7,53 +7,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
-  <!-- hCaptcha script -->
-  <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
 </head>
-<body class="gate-active">
-
-  <!-- ─── hCaptcha Gate ─────────────────────────────────── -->
-  <div id="captcha-gate" role="dialog" aria-modal="true" aria-label="Verification required">
-    <div class="gate-card">
-
-      <!-- Logo -->
-      <div class="gate-logo">
-        <svg width="28" height="28" viewBox="0 0 26 26" fill="none" aria-hidden="true">
-          <rect width="26" height="26" rx="6" fill="#FF3B30"/>
-          <polygon points="10,7 21,13 10,19" fill="white"/>
-        </svg>
-        <span class="gate-logo-text">Viewtube</span>
-      </div>
-
-      <div class="gate-divider"></div>
-
-      <h1 class="gate-headline">Wait a moment…</h1>
-      <p class="gate-sub">We're checking that you're a human before letting you in.</p>
-
-      <!-- hCaptcha widget -->
-      <div id="captcha-widget-wrap">
-        <div
-          class="h-captcha"
-          data-sitekey="d72227ec-e1ec-4660-9688-b5580106cc38"
-          data-theme="dark"
-          data-callback="onCaptchaSolved"
-          data-expired-callback="onCaptchaExpired"
-        ></div>
-      </div>
-
-      <!-- Continue button — shown after captcha solved -->
-      <button id="captcha-continue-btn" onclick="dismissGate()" aria-label="Continue to Viewtube">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-             stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-          <polyline points="9 18 15 12 9 6"/>
-        </svg>
-        Continue
-      </button>
-
-      <p class="gate-footer">Protected by hCaptcha &nbsp;·&nbsp; <a href="https://www.hcaptcha.com/privacy" target="_blank" rel="noopener" style="color:var(--dim);text-decoration:underline">Privacy</a> &nbsp;·&nbsp; <a href="https://www.hcaptcha.com/terms" target="_blank" rel="noopener" style="color:var(--dim);text-decoration:underline">Terms</a></p>
-    </div>
-  </div>
-  <!-- ─── End Gate ──────────────────────────────────────── -->
+<body>
 
   <header class="header">
     <button class="logo" onclick="navHome()" aria-label="Home">
